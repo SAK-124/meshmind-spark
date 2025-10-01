@@ -56,6 +56,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          notebook_id: string | null
         }
         Insert: {
           canvas_id: string
@@ -63,6 +64,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          notebook_id?: string | null
         }
         Update: {
           canvas_id?: string
@@ -70,6 +72,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          notebook_id?: string | null
         }
         Relationships: [
           {
@@ -77,6 +80,13 @@ export type Database = {
             columns: ["canvas_id"]
             isOneToOne: false
             referencedRelation: "canvases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clusters_notebook_id_fkey"
+            columns: ["notebook_id"]
+            isOneToOne: false
+            referencedRelation: "notebooks"
             referencedColumns: ["id"]
           },
         ]
@@ -124,6 +134,7 @@ export type Database = {
           from_node_id: string
           id: string
           label: string | null
+          notebook_id: string | null
           to_node_id: string
         }
         Insert: {
@@ -133,6 +144,7 @@ export type Database = {
           from_node_id: string
           id?: string
           label?: string | null
+          notebook_id?: string | null
           to_node_id: string
         }
         Update: {
@@ -142,6 +154,7 @@ export type Database = {
           from_node_id?: string
           id?: string
           label?: string | null
+          notebook_id?: string | null
           to_node_id?: string
         }
         Relationships: [
@@ -166,6 +179,13 @@ export type Database = {
             referencedRelation: "nodes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "edges_notebook_id_fkey"
+            columns: ["notebook_id"]
+            isOneToOne: false
+            referencedRelation: "notebooks"
+            referencedColumns: ["id"]
+          },
         ]
       }
       nodes: {
@@ -174,6 +194,8 @@ export type Database = {
           cluster_id: string | null
           created_at: string
           id: string
+          notebook_id: string | null
+          note_id: string | null
           position: Json
           tags: string[] | null
           tasks: Json | null
@@ -185,6 +207,8 @@ export type Database = {
           cluster_id?: string | null
           created_at?: string
           id?: string
+          notebook_id?: string | null
+          note_id?: string | null
           position?: Json
           tags?: string[] | null
           tasks?: Json | null
@@ -196,6 +220,8 @@ export type Database = {
           cluster_id?: string | null
           created_at?: string
           id?: string
+          notebook_id?: string | null
+          note_id?: string | null
           position?: Json
           tags?: string[] | null
           tasks?: Json | null
@@ -208,6 +234,96 @@ export type Database = {
             columns: ["canvas_id"]
             isOneToOne: false
             referencedRelation: "canvases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nodes_notebook_id_fkey"
+            columns: ["notebook_id"]
+            isOneToOne: false
+            referencedRelation: "notebooks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nodes_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notebooks: {
+        Row: {
+          color: string
+          created_at: string
+          icon: string
+          id: string
+          settings: Json | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          icon?: string
+          id?: string
+          settings?: Json | null
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          icon?: string
+          id?: string
+          settings?: Json | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notebooks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notes: {
+        Row: {
+          content: string
+          created_at: string
+          formatted_content: string | null
+          id: string
+          notebook_id: string
+          updated_at: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          formatted_content?: string | null
+          id?: string
+          notebook_id: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          formatted_content?: string | null
+          id?: string
+          notebook_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notes_notebook_id_fkey"
+            columns: ["notebook_id"]
+            isOneToOne: false
+            referencedRelation: "notebooks"
             referencedColumns: ["id"]
           },
         ]
