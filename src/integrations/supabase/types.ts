@@ -14,7 +14,196 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      canvases: {
+        Row: {
+          created_at: string
+          id: string
+          settings: Json | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          settings?: Json | null
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          settings?: Json | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canvases_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clusters: {
+        Row: {
+          canvas_id: string
+          color: string
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          canvas_id: string
+          color: string
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          canvas_id?: string
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clusters_canvas_id_fkey"
+            columns: ["canvas_id"]
+            isOneToOne: false
+            referencedRelation: "canvases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      edges: {
+        Row: {
+          canvas_id: string
+          created_at: string
+          edge_type: string | null
+          from_node_id: string
+          id: string
+          label: string | null
+          to_node_id: string
+        }
+        Insert: {
+          canvas_id: string
+          created_at?: string
+          edge_type?: string | null
+          from_node_id: string
+          id?: string
+          label?: string | null
+          to_node_id: string
+        }
+        Update: {
+          canvas_id?: string
+          created_at?: string
+          edge_type?: string | null
+          from_node_id?: string
+          id?: string
+          label?: string | null
+          to_node_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "edges_canvas_id_fkey"
+            columns: ["canvas_id"]
+            isOneToOne: false
+            referencedRelation: "canvases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edges_from_node_id_fkey"
+            columns: ["from_node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edges_to_node_id_fkey"
+            columns: ["to_node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nodes: {
+        Row: {
+          canvas_id: string
+          cluster_id: string | null
+          created_at: string
+          id: string
+          position: Json
+          tags: string[] | null
+          tasks: Json | null
+          text: string
+          updated_at: string
+        }
+        Insert: {
+          canvas_id: string
+          cluster_id?: string | null
+          created_at?: string
+          id?: string
+          position?: Json
+          tags?: string[] | null
+          tasks?: Json | null
+          text: string
+          updated_at?: string
+        }
+        Update: {
+          canvas_id?: string
+          cluster_id?: string | null
+          created_at?: string
+          id?: string
+          position?: Json
+          tags?: string[] | null
+          tasks?: Json | null
+          text?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nodes_canvas_id_fkey"
+            columns: ["canvas_id"]
+            isOneToOne: false
+            referencedRelation: "canvases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
