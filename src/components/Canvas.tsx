@@ -5,6 +5,7 @@ import {
   Controls,
   MiniMap,
   ConnectionMode,
+  type Connection,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useCanvasStore } from '@/store/canvasStore';
@@ -24,7 +25,7 @@ const Canvas = () => {
   } = useCanvasStore();
 
   const onConnect = useCallback(
-    (connection: any) => {
+    (connection: Connection) => {
       storeAddEdge(connection.source, connection.target);
     },
     [storeAddEdge]

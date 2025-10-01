@@ -1,42 +1,56 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface Node {
+const DAILY_LIMIT = 30;
+const TIME_ZONE = "America/Los_Angeles";
+const GEMINI_MODEL = "gemini-2.5-flash-lite-001";
+
+interface NodePayload {
   id: string;
   text: string;
   tags: string[];
 }
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+interface ClusterRequestPayload {
+  nodes?: NodePayload[];
+  userId?: string;
+}
 
-  try {
-    const { nodes } = await req.json() as { nodes: Node[] };
-    
-    if (!nodes || nodes.length === 0) {
-      return new Response(
-        JSON.stringify({ error: 'No nodes provided' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+const supabaseUrl = Deno.env.get("SUPABASE_URL");
+const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY not configured');
-    }
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error("Supabase service credentials are not configured");
+}
 
-    console.log('Clustering', nodes.length, 'nodes');
+if (!geminiApiKey) {
+  console.error("GEMINI_API_KEY is not configured");
+}
 
-    // Prepare node summaries for clustering
-    const nodeSummaries = nodes.map(n => `[${n.id}] ${n.text} ${n.tags.join(' ')}`).join('\n');
+const supabaseAdmin =
+  supabaseUrl && supabaseServiceKey
+    ? createClient(supabaseUrl, supabaseServiceKey, {
+        auth: {
+          persistSession: false,
+        },
+      })
+    : null;
 
-    const prompt = `Analyze these nodes and group them into meaningful clusters (2-5 clusters max).
+const formatUsageDate = (date: Date) =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: TIME_ZONE }).format(date);
+
+const buildPrompt = (nodes: NodePayload[]) => {
+  const nodeSummaries = nodes
+    .map((node) => `[${node.id}] ${node.text} ${(node.tags || []).join(" ")}`)
+    .join("\n");
+
+  return `Analyze these nodes and group them into meaningful clusters (2-5 clusters max).
 Return JSON with this structure:
 {
   "clusters": [
@@ -56,68 +70,169 @@ Rules:
 - Each node should belong to exactly one cluster
 - Choose descriptive names (2-3 words)
 - Use distinct, vibrant colors
-- Include ALL node IDs`;
+- Include ALL node IDs
+- Respond with valid JSON only.`;
+};
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
+const extractJson = (content: string | undefined) => {
+  if (!content) return null;
+  const jsonMatch = content.match(/\{[\s\S]*\}/);
+  return jsonMatch ? jsonMatch[0] : null;
+};
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const payload = (await req.json()) as ClusterRequestPayload;
+    const nodes = payload.nodes ?? [];
+    const userId = payload.userId;
+
+    if (!nodes.length) {
+      return new Response(
+        JSON.stringify({ error: "No nodes provided" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ error: "Missing userId" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    if (!supabaseAdmin) {
+      throw new Error("Supabase admin client not initialized");
+    }
+
+    if (!geminiApiKey) {
+      throw new Error("GEMINI_API_KEY not configured");
+    }
+
+    const now = new Date();
+    const usageDate = formatUsageDate(now);
+
+    const { data: existingUsage, error: usageError } = await supabaseAdmin
+      .from("cluster_usage")
+      .select("id, count")
+      .eq("user_id", userId)
+      .eq("usage_date", usageDate)
+      .maybeSingle();
+
+    if (usageError) {
+      console.error("Usage fetch error", usageError.message);
+      throw new Error("Failed to read usage limits");
+    }
+
+    if ((existingUsage?.count ?? 0) >= DAILY_LIMIT) {
+      return new Response(
+        JSON.stringify({ error: "Daily clustering limit reached. Try again after midnight PST." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const prompt = buildPrompt(nodes);
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${geminiApiKey}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          systemInstruction: {
+            role: "system",
+            parts: [
+              {
+                text: "You are a clustering expert. Always respond with valid JSON only.",
+              },
+            ],
+          },
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: prompt }],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.3,
+          },
+          responseMimeType: "application/json",
+        }),
       },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: 'You are a clustering expert. Always respond with valid JSON only.' },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.3,
-      }),
-    });
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('AI API error:', response.status, errorText);
-      
+      console.error("Gemini API error", response.status, errorText);
+
       if (response.status === 429) {
         return new Response(
-          JSON.stringify({ error: 'Rate limit exceeded. Please wait and try again.' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ error: "Gemini rate limit exceeded. Please wait and try again." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
-      
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: 'AI credits depleted. Please add credits to continue.' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      throw new Error(`AI API error: ${response.status}`);
+
+      throw new Error(`Gemini API error: ${response.status}`);
     }
 
-    const data = await response.json();
-    const aiResponse = data.choices[0].message.content;
-    
-    console.log('AI response:', aiResponse);
-    
-    // Parse JSON from response
-    const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('No JSON found in AI response');
+    const aiData = await response.json();
+    const aiContent = aiData.candidates?.[0]?.content?.parts
+      ?.map((part: { text?: string }) => part.text ?? "")
+      .join("")
+      .trim();
+
+    console.log("Gemini response", aiContent);
+
+    const jsonPayload = extractJson(aiContent || "");
+    if (!jsonPayload) {
+      throw new Error("No JSON found in Gemini response");
     }
-    
-    const clusters = JSON.parse(jsonMatch[0]);
-    
+
+    const clusters = JSON.parse(jsonPayload);
+
+    const newCount = (existingUsage?.count ?? 0) + 1;
+    const { error: upsertError } = await supabaseAdmin
+      .from("cluster_usage")
+      .upsert(
+        {
+          user_id: userId,
+          usage_date: usageDate,
+          count: newCount,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id,usage_date" },
+      );
+
+    if (upsertError) {
+      console.error("Usage update error", upsertError.message);
+      throw new Error("Failed to record usage");
+    }
+
+    const responseBody = {
+      ...clusters,
+      usage: {
+        count: newCount,
+        limit: DAILY_LIMIT,
+      },
+    };
+
     return new Response(
-      JSON.stringify(clusters),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify(responseBody),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
-    
   } catch (error) {
-    console.error('Error in cluster-nodes function:', error);
+    console.error("Error in cluster-nodes function:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
+    const status = message.includes("Daily clustering limit") ? 429 : 500;
+
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: message }),
+      { status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });

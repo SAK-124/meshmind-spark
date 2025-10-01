@@ -11,6 +11,21 @@ const CustomNode = memo(({ data }: NodeProps) => {
       <Handle type="target" position={Position.Top} className="w-3 h-3 bg-accent" />
       
       <div className="p-4 space-y-2">
+        {nodeData.clusterName && (
+          <div className="flex items-center justify-between text-xs">
+            <Badge
+              variant="secondary"
+              className="px-2 py-0.5 font-medium"
+              style={{
+                backgroundColor: nodeData.clusterColor || 'hsl(var(--accent))',
+                color: 'hsl(var(--card-foreground))',
+              }}
+            >
+              {nodeData.clusterName}
+            </Badge>
+          </div>
+        )}
+
         <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
           {nodeData.text}
         </p>

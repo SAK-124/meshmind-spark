@@ -7,8 +7,10 @@ export interface NodeData {
   tags: string[];
   tasks: { text: string; done: boolean }[];
   clusterId?: string;
+  clusterName?: string;
+  clusterColor?: string;
   createdAt: Date;
-  [key: string]: any; // Index signature for compatibility
+  [key: string]: unknown; // Allow optional metadata fields when extending node data
 }
 
 export interface Cluster {
@@ -66,15 +68,16 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   },
   
   addNode: (text, tags) => {
+    const nodeId = `node-${Date.now()}`;
     const newNode: FlowNode<NodeData> = {
-      id: `node-${Date.now()}`,
+      id: nodeId,
       type: 'custom',
       position: {
         x: Math.random() * 300 + 100,
         y: Math.random() * 300 + 100,
       },
       data: {
-        id: `node-${Date.now()}`,
+        id: nodeId,
         text,
         tags,
         tasks: [],

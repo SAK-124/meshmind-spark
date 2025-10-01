@@ -25,7 +25,7 @@ const Auth = () => {
     };
     checkSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       if (session) {
         navigate("/canvas");
       }
@@ -58,8 +58,9 @@ const Auth = () => {
         if (error) throw error;
         toast.success("Account created! Please check your email to verify.");
       }
-    } catch (error: any) {
-      toast.error(error.message || "An error occurred");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "An error occurred";
+      toast.error(message);
     } finally {
       setLoading(false);
     }
