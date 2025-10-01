@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import Canvas from '@/components/Canvas';
+import NoteEditor from '@/components/NoteEditor';
+import CanvasPanel from '@/components/CanvasPanel';
 import ChatInput from '@/components/ChatInput';
 import { Button } from '@/components/ui/button';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { LogOut, Download, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCanvasStore } from '@/store/canvasStore';
@@ -36,6 +38,8 @@ const CanvasPage = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [clustering, setClustering] = useState(false);
+  const [editorFullscreen, setEditorFullscreen] = useState(false);
+  const [canvasFullscreen, setCanvasFullscreen] = useState(false);
   const navigate = useNavigate();
   const {
     nodes,
@@ -293,11 +297,11 @@ const CanvasPage = () => {
     <div className="h-screen flex flex-col">
       <header className="h-16 border-b border-border/50 bg-card/80 backdrop-blur-sm flex items-center justify-between px-4">
         <div className="flex items-center gap-2">
-          <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+          <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent" data-testid="text-app-title">
             NoteMesh
           </h1>
           <span className="text-xs text-muted-foreground">{APP_VERSION}</span>
-          <span className="text-sm text-muted-foreground">
+          <span className="text-sm text-muted-foreground" data-testid="text-stats">
             {nodes.length} nodes • {edges.length} connections
           </span>
         </div>
@@ -307,6 +311,7 @@ const CanvasPage = () => {
             size="sm"
             onClick={handleCluster}
             disabled={clustering || nodes.length < 2}
+            data-testid="button-auto-cluster"
           >
             {clustering ? (
               <>
@@ -320,19 +325,55 @@ const CanvasPage = () => {
               </>
             )}
           </Button>
-          <Button variant="outline" size="sm" onClick={handleExportPNG}>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleExportPNG}
+            data-testid="button-export-png"
+          >
             <Download className="mr-2 h-4 w-4" />
             Export PNG
           </Button>
-          <Button variant="ghost" size="sm" onClick={handleSignOut}>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleSignOut}
+            data-testid="button-sign-out"
+          >
             <LogOut className="mr-2 h-4 w-4" />
             Sign Out
           </Button>
         </div>
       </header>
       
-      <div className="flex-1">
-        <Canvas />
+      <div className="flex-1 overflow-hidden">
+        {editorFullscreen ? (
+          <NoteEditor 
+            isFullscreen={editorFullscreen}
+            onToggleFullscreen={() => setEditorFullscreen(false)}
+          />
+        ) : canvasFullscreen ? (
+          <CanvasPanel
+            isFullscreen={canvasFullscreen}
+            onToggleFullscreen={() => setCanvasFullscreen(false)}
+          />
+        ) : (
+          <ResizablePanelGroup direction="horizontal">
+            <ResizablePanel defaultSize={40} minSize={20}>
+              <NoteEditor 
+                isFullscreen={false}
+                onToggleFullscreen={() => setEditorFullscreen(true)}
+              />
+            </ResizablePanel>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={60} minSize={30}>
+              <CanvasPanel
+                isFullscreen={false}
+                onToggleFullscreen={() => setCanvasFullscreen(true)}
+              />
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        )}
       </div>
       
       <ChatInput onCluster={handleCluster} />
