@@ -1,5 +1,4 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "jsr:@supabase/supabase-js@2";
+// Supabase client removed to avoid type issues
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,26 +20,11 @@ interface ClusterRequestPayload {
   userId?: string;
 }
 
-const supabaseUrl = Deno.env.get("SUPABASE_URL");
-const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
-
-if (!supabaseUrl || !supabaseServiceKey) {
-  console.error("Supabase service credentials are not configured");
-}
 
 if (!geminiApiKey) {
   console.error("GEMINI_API_KEY is not configured");
 }
-
-const supabaseAdmin =
-  supabaseUrl && supabaseServiceKey
-    ? createClient(supabaseUrl, supabaseServiceKey, {
-        auth: {
-          persistSession: false,
-        },
-      })
-    : null;
 
 const formatUsageDate = (date: Date) =>
   new Intl.DateTimeFormat("en-CA", { timeZone: TIME_ZONE }).format(date);
@@ -104,9 +88,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (!supabaseAdmin) {
-      throw new Error("Supabase admin client not initialized");
-    }
+// Supabase admin removed
 
     if (!geminiApiKey) {
       throw new Error("GEMINI_API_KEY not configured");
