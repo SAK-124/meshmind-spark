@@ -8,31 +8,56 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { Loader2, Brain } from "lucide-react";
 
+const LoadingScreen = () => (
+  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-primary/5 to-background">
+    <div className="animate-fade-in">
+      <div className="flex flex-col items-center gap-4">
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+          <Brain className="w-8 h-8 text-primary absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+        </div>
+        <p className="text-muted-foreground font-medium">Loading NoteMesh...</p>
+      </div>
+    </div>
+  </div>
+);
+
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        navigate("/canvas");
+        setTimeout(() => {
+          navigate("/canvas");
+        }, 300);
+      } else {
+        setIsChecking(false);
       }
     };
     checkSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       if (session) {
-        navigate("/canvas");
+        setTimeout(() => {
+          navigate("/canvas");
+        }, 300);
       }
     });
 
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  if (isChecking) {
+    return <LoadingScreen />;
+  }
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,7 +92,7 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden animate-fade-in">
       {/* Animated background */}
       <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-primary/5" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent" />
@@ -76,7 +101,7 @@ const Auth = () => {
       <div className="absolute top-20 left-20 w-72 h-72 bg-primary/20 rounded-full blur-3xl animate-pulse" />
       <div className="absolute bottom-20 right-20 w-96 h-96 bg-accent/15 rounded-full blur-3xl animate-pulse delay-1000" />
 
-      <Card className="w-full max-w-md relative backdrop-blur-xl bg-card/80 border-border/50 shadow-2xl">
+      <Card className="w-full max-w-md relative backdrop-blur-xl bg-card/80 border-border/50 shadow-2xl animate-scale-in">
         <CardHeader className="space-y-1 text-center">
           <div className="flex items-center justify-center gap-2 mb-2">
             <Brain className="w-8 h-8 text-primary" />

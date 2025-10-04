@@ -1,4 +1,7 @@
 project_id = "hzgarllpcflppaakcgjv"
 
 [functions.cluster-nodes]
-verify_jwt = true
+verify_jwt = false
+
+[functions.improve-note]
+verify_jwt = false
