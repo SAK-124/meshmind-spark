@@ -19,52 +19,42 @@ serve(async (req) => {
       });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ error: "Missing Lovable API Key" }), { 
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) {
+      return new Response(JSON.stringify({ error: "Missing Gemini API Key" }), { 
         status: 500, 
         headers: { ...corsHeaders, "Content-Type": "application/json" } 
       });
     }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: "You are a writing assistant. Improve notes for clarity, grammar, and style. Return only the improved text without explanations." },
-          { role: "user", content: `Improve this note:\n\n${content}` }
-        ],
-      }),
-    });
+    const prompt = `Improve and format this note for clarity, grammar, and style. Return only the improved note as plain text without any explanations or markdown formatting.\n\nNote:\n${content}`;
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          generationConfig: { 
+            temperature: 0.4,
+            maxOutputTokens: 2048
+          },
+        }),
+      }
+    );
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Payment required. Please add credits to your workspace." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
       const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      return new Response(JSON.stringify({ error: "AI gateway error" }), {
+      console.error("Gemini API error:", response.status, errorText);
+      return new Response(JSON.stringify({ error: `Gemini API error: ${response.status}` }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const aiData = await response.json();
-    const improvedContent = aiData?.choices?.[0]?.message?.content?.trim() ?? "";
+    const data = await response.json();
+    const improvedContent = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? content;
     
     return new Response(JSON.stringify({ improvedContent }), { 
       headers: { ...corsHeaders, "Content-Type": "application/json" } 
